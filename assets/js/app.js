@@ -53,7 +53,7 @@ const pageClasses = {
 };
 
 const customClasses = {
-
+    'pages/custom/category/special-items': () => import('./theme/add-all-to-cart'),
 };
 
 /**

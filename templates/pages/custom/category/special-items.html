@@ -15,6 +15,9 @@ category:
     {{/if}}
 {{/partial}}
 
+{{inject 'productList' category.products}}
+{{inject 'customer' customer}}
+
 {{#partial "page"}}
 
 {{> components/common/breadcrumbs breadcrumbs=breadcrumbs}}
@@ -49,6 +52,10 @@ category:
     {{/if}}
 
     <div class="page-content" id="product-listing-container">
+        {{#if customer}}
+        {{> components/category/customer-info}}
+        {{/if}}
+        {{> components/category/special-item-add-all }}
         {{> components/category/product-listing-special-items}}
         {{{region name="category_below_content"}}}
     </div>
