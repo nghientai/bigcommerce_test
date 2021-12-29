@@ -52,8 +52,8 @@ module.exports = {
     },
     performance: {
         hints: 'warning',
-        maxAssetSize: 1024 * 300,
-        maxEntrypointSize: 1024 * 300,
+        maxAssetSize: 1024 * 500,
+        maxEntrypointSize: 1024 * 500,
     },
     plugins: [
         new CleanPlugin(['assets/dist'], {

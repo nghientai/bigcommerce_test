@@ -3,6 +3,12 @@
 
 Preview code: yakk35fnxg
 
+Demo user:
+
+Username: test@test.com
+
+Password: xmgRpgVpDRYj2fD
+
 # Tasks
 
 1. Create a product called Special Item which will be assigned to a new category called Special Items. Be sure to add at least 2 images during the product creation.
