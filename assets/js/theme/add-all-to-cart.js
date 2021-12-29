@@ -2,8 +2,8 @@ import PageManager from './page-manager';
 import utils from '@bigcommerce/stencil-utils';
 import Swal from './global/sweet-alert';
 import cartPreview from './global/cart-preview';
-import _ from 'lodash';
 import 'regenerator-runtime/runtime';
+
 export default class AddAllSpecialItems extends PageManager {
     constructor(context) {
         super(context);
@@ -13,67 +13,43 @@ export default class AddAllSpecialItems extends PageManager {
         this.secureBaseUrl = this.context.secureBaseUrl;
     }
 
+    /**
+     * Initialize the page
+     */
     onReady() {
         this.onAddAllToCart();
         this.onRemoveAll();
-        this.getCart().then((data) => {
-            data.length > 0 ? $('#remove-all-special').show() : $('#remove-all-special').hide();
+        utils.api.cart.getCart({ includeOptions: true }, (err, data) => {
+            // eslint-disable-next-line no-unused-expressions
+            typeof data !== 'undefined' ? $('#remove-all-special').show() : $('#remove-all-special').hide();
         });
     }
 
+    /**
+     * Remove all items from a cart
+     */
     onRemoveAll() {
-        /**
-         * 1. Remove the product match the special list id
-         */
-        let binding = this;
-        $('#remove-all-special').on('click', function (event) {
+        const binding = this;
+        $('#remove-all-special').on('click', (event) => {
             event.preventDefault();
-            binding
-                .getCart()
-                .then((data) => {
-                    if (data.length > 0) {
-                        var mapped = [];
-                        var newarra = data[0].lineItems;
-                        var isDelete = [];
-                        Object.values(newarra).map((value) => {
-                            //console.log([...mapped,value]);
-                            if (value.length > 0) mapped.push(value);
-                        });
-                        mapped = Array.prototype.concat.apply([], mapped);
-                        console.log('Run Mapped first ', mapped);
-
-                        mapped.map((el) => {
-                            binding.deleteCartItem(el.id).then((data) => {
-                                isDelete.push(data);
-                            });
-                        });
-
-                        if (isDelete) {
-                            Swal.fire({
-                                text: 'Cart is empty!',
-                                icon: 'info',
-                            }).then(() => {
-                                cartPreview(binding.secureBaseUrl, data.id);
-                                $('#remove-all-special').hide();
-                                // window.location.reload();
-                            });
-                        }
-                        //var mapped = _.mapValues(newarra,'productId');
-                    } else {
-                        Swal.fire({
-                            text: 'There is no items in Cart',
-                            icon: 'info',
-                        });
-                    }
-                })
-                .catch((error) => console.error(error));
+            const deleteCart = binding.deleteCart(binding.cartId);
+            deleteCart.then(() => {
+                Swal.fire({
+                    text: 'Removed all items in your cart',
+                    icon: 'success',
+                });
+                cartPreview(binding.secureBaseUrl, binding.cartId);
+                $('#remove-all-special').hide();
+            });
         });
     }
 
+    /**
+     * Add all items to a cart
+     */
     onAddAllToCart() {
-
-        let lineItems = [];
-        let binding = this;
+        const lineItems = [];
+        const binding = this;
         this.productList.map((product) => {
             lineItems.push({
                 productId: product.id,
@@ -81,12 +57,11 @@ export default class AddAllSpecialItems extends PageManager {
             });
         });
         const cartItems = {
-            lineItems: lineItems,
+            lineItems,
         };
 
-        $('#add-all-special').on('click', function (event) {
+        $('#add-all-special').on('click', (event) => {
             event.preventDefault();
-
             /**
              * Add to cart process
              * 1. Check if items in the cart
@@ -96,92 +71,50 @@ export default class AddAllSpecialItems extends PageManager {
              *     1.2. No
              *         - Add All Items to the empty cart
              */
-            binding.getCart('/api/storefront/carts?include=lineItems.digitalItems.options,lineItems.physicalItems.options').then((data) => {
-                console.log('cartdata', data);
-                // 1. Check if non-exist cartId
-                if (data.length === 0) {
-                    // create a new cart
-                    binding
-                        .createCart(`/api/storefront/carts`, cartItems)
-                        .then((data) => {
-                            Swal.fire({
-                                text: 'Added all special items in your cart',
-                                icon: 'success',
-                            }).then(() => {
-                                cartPreview(binding.secureBaseUrl, data.id);
-                                $('#remove-all-special').show();
-                            });
-                        })
-                        .catch((error) => console.error(error));
-                } else {
-                    // Cart found
-                    //Update the cart with +1 quantity
-                    const cartId = data[0].id;
-                    binding
-                        .addCartItem(`/api/storefront/carts/`, cartId, cartItems)
-                        .then((data) => {
-                            Swal.fire({
-                                text: 'Added all special items in your cart',
-                                icon: 'success',
-                            }).then(() => {
-                                cartPreview(binding.secureBaseUrl, cartId);
-                            });
-                        })
-                        .catch((err) => console.log(err));
-                }
-            });
-            return;
+            // 1. Check if non-exist cartId
+            if (binding.cartId === null) {
+                // create a new cart
+                binding
+                    .createCart('/api/storefront/carts', cartItems)
+                    .then((res) => {
+                        Swal.fire({
+                            text: 'Added all special items in your cart',
+                            icon: 'success',
+                        }).then(() => {
+                            binding.cartId = res.id;
+                            cartPreview(binding.secureBaseUrl, res.id);
+                            $('#remove-all-special').show();
+                        });
+                    })
+                    .catch((error) => console.error(error));
+            } else {
+                // Cart found Update the cart with +1 quantity
+                binding
+                    .addCartItem('/api/storefront/carts/', binding.cartId, cartItems)
+                    .then(() => {
+                        Swal.fire({
+                            text: 'Added all special items in your cart',
+                            icon: 'success',
+                        }).then(() => {
+                            cartPreview(binding.secureBaseUrl, binding.cartId);
+                        });
+                    })
+                    .catch((err) => console.log(err));
+            }
         });
-    }
-
-    /**
-     * Get current cart
-     * @param {string} url
-     */
-    getCart() {
-        var url = '/api/storefront/carts?include=lineItems.digitalItems.options,lineItems.physicalItems.options';
-        return fetch(url, {
-            method: 'GET',
-            credentials: 'same-origin',
-        }).then((response) => response.json());
     }
 
     /**
      *
-     * @param {*} url
-     * @param {*} cartId
-     * @param {*} itemId
+     * @param cartId
+     * @returns {Promise<void>}
      */
-    deleteCartItem(itemId) {
-        const removeItemPromise = new Promise((resolve, reject) => {
-            utils.api.cart.itemRemove(itemId, (err, response) => {
-                if (response.data.status === 'succeed') {
-                    resolve(1);
-                    this.getCart().then((data) => {
-                        //console.log('Inside Delete Func', data);
-                        if (data.length > 0) {
-                            var mapped = [];
-                            var newarra = data[0].lineItems;
-                            var isDelete = [];
-                            Object.values(newarra).map((value) => {
-                                //console.log([...mapped,value]);
-                                if (value.length > 0) mapped.push(value);
-                            });
-                            mapped = Array.prototype.concat.apply([], mapped);
-
-                            mapped.map((el) => {
-                                this.deleteCartItem(el.id).then((data) => {
-                                    isDelete.push(data);
-                                });
-                            });
-                        }
-                    });
-                } else {
-                    reject('error');
-                }
-            });
-        });
-        return removeItemPromise;
+    deleteCart(cartId) {
+        const url = `/api/storefront/carts/${cartId}`;
+        return fetch(url, {
+            method: 'DELETE',
+            credentials: 'same-origin',
+        }).then(res => res);
     }
 
     /**
@@ -207,7 +140,7 @@ export default class AddAllSpecialItems extends PageManager {
      * @param {array} cartItems
      */
     addCartItem(url, cartId, cartItems) {
-        return fetch(url + cartId + '/items', {
+        return fetch(`${url + cartId}/items`, {
             method: 'POST',
             credentials: 'same-origin',
             headers: {
